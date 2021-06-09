@@ -20,13 +20,20 @@ class AnovaFTransformer(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def calculate_f_value(X, y=None):
-        X0 = X[y == 0]
-        X1 = X[y == 1]
+        clss = np.unique(y)
+        clss.sort(axis=0)
+
+        means = []
+        for cls in clss:
+            means.append(np.mean(X[y == cls]))
+        means = np.array(means)
         mean_of_total = np.mean(X)
-        mean_0 = np.mean(X0)
-        mean_1 = np.mean(X1)
         total_ss = np.sum((X - mean_of_total) ** 2)  # sum of squares of all classes
-        within_ss = np.sum((X0 - mean_0) ** 2) + np.sum((X1 - mean_1) ** 2)  # sum of squares within classes
+        within_ss = 0
+
+        for cls in clss:
+            within_ss += np.sum((X[y == cls] - means[cls]) ** 2)  # sum of squares within classes
+
         p_w = len(X) - len(np.unique(y))  # degrees of freedom (within)
         p_b = len(np.unique(y)) - 1  # degrees of freedom (between)
         F_val = ((total_ss - within_ss) / p_b) / (within_ss / p_w)
