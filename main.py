@@ -5,7 +5,6 @@ from sklearn.datasets import make_classification
 import numpy as np
 from sklearn.feature_selection import chi2, SelectKBest, SelectPercentile
 from sklearn.preprocessing import MinMaxScaler
-
 from AnovaTransformer import AnovaFTransformer
 from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold
@@ -18,14 +17,16 @@ np.set_printoptions(suppress=True)
 X, y = make_classification(
     n_samples=20,
     n_classes=3,
-    n_features=20,
+    n_features=30,
     n_redundant=4,
-    n_informative=2,
+    n_informative=20,
     random_state=1234,
     n_clusters_per_class=1,
 )
 
 X = MinMaxScaler().fit_transform(X, y)
+
+k_features = 10
 
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1234)
 
@@ -37,9 +38,9 @@ clfs = {
 
 datasets = {
     'Base': X,
-    'Anova': AnovaFTransformer().fit_transform(X, y, n_features=3),
-    'SKB': SelectKBest(chi2, k=3).fit_transform(X, y),
-    'PCA': PCA(n_components=3).fit_transform(X)
+    'Anova': AnovaFTransformer().fit_transform(X, y, n_features=k_features),
+    'SKB': SelectKBest(chi2, k=k_features).fit_transform(X, y),
+    'PCA': PCA(n_components=k_features).fit_transform(X)
 }
 
 folds = 5
@@ -67,8 +68,7 @@ p_value = np.zeros((len(datasets), len(datasets)))
 
 for i in range(len(datasets)):
     for j in range(len(datasets)):
-        t_statistic[i, j], p_value[i, j] = ttest_rel(np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1),
-                                                     nan_policy='raise')
+        t_statistic[i, j], p_value[i, j] = ttest_rel(np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1))
 
 headers = datasets.keys()
 names_column = np.array([[key] for key in datasets.keys()])
