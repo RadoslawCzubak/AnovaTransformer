@@ -17,9 +17,9 @@ np.set_printoptions(suppress=True)
 X, y = make_classification(
     n_samples=20,
     n_classes=3,
-    n_features=30,
+    n_features=20,
     n_redundant=4,
-    n_informative=20,
+    n_informative=10,
     random_state=1234,
     n_clusters_per_class=1,
 )
