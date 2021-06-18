@@ -1,19 +1,23 @@
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator
+from sklearn.feature_selection import SelectorMixin
 import numpy as np
 
 
-class AnovaFTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self):
+class AnovaSelector(BaseEstimator, SelectorMixin):
+    def _get_support_mask(self):
         pass
 
-    def fit_transform(self, X, y=None, n_features=5):
+    def __init__(self, k_features=5):
+        self.k_features = k_features
+
+    def fit_transform(self, X, y=None, **fit_params):
         f_scores = []
         for feature in X.T:
             f_scores.append(self.calculate_f_value(feature, y))
         self.scores_ = np.array(f_scores)
 
         # get n columns with highest score
-        idx = np.argpartition(self.scores_, -n_features)[-n_features:]
+        idx = np.argpartition(self.scores_, -self.k_features)[-self.k_features:]
         indices = idx[np.argsort((-self.scores_)[idx])]
         new_X = X[:, sorted(indices)]
         return new_X

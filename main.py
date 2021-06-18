@@ -1,11 +1,11 @@
-from scipy.stats import rankdata, ttest_rel
+from scipy.stats import ttest_rel
 from sklearn.metrics import accuracy_score
 from sklearn.base import clone
 from sklearn.datasets import make_classification
 import numpy as np
-from sklearn.feature_selection import chi2, SelectKBest, SelectPercentile
+from sklearn.feature_selection import chi2, SelectKBest
 from sklearn.preprocessing import MinMaxScaler
-from AnovaTransformer import AnovaFTransformer
+from AnovaSelector import AnovaSelector
 from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold
 from sklearn.naive_bayes import GaussianNB
@@ -15,7 +15,7 @@ from tabulate import tabulate
 
 np.set_printoptions(suppress=True)
 X, y = make_classification(
-    n_samples=20,
+    n_samples=10000,
     n_classes=3,
     n_features=20,
     n_redundant=4,
@@ -38,7 +38,7 @@ clfs = {
 
 datasets = {
     'Base': X,
-    'Anova': AnovaFTransformer().fit_transform(X, y, n_features=k_features),
+    'Anova': AnovaSelector(k_features=k_features).fit_transform(X, y),
     'SKB': SelectKBest(chi2, k=k_features).fit_transform(X, y),
     'PCA': PCA(n_components=k_features).fit_transform(X)
 }
@@ -55,20 +55,21 @@ for dataset_idx, dataset_name in enumerate(datasets):
             scores[clf_index, dataset_idx, fold_index] = accuracy_score(
                 y[test], y_pred)
 
-for database_id, database_name in enumerate(datasets):
-    print(f"{database_name}")
-    means = np.mean(scores[:, database_id, :], axis=1)
-    std_devs = np.std(scores[:,database_id,:], axis=1)
+for dataset_id, dataset_name in enumerate(datasets):
+    print(f"{dataset_name}")
+    means = np.mean(scores[:, dataset_id, :], axis=1)
+    std_devs = np.std(scores[:, dataset_id, :], axis=1)
     for clf_idx, clf_name in enumerate(clfs):
         print(f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
 
-alfa = .05
+alpha = .05
 t_statistic = np.zeros((len(datasets), len(datasets)))
 p_value = np.zeros((len(datasets), len(datasets)))
 
 for i in range(len(datasets)):
     for j in range(len(datasets)):
-        t_statistic[i, j], p_value[i, j] = ttest_rel(np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1))
+        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1)
+        t_statistic[i, j], p_value[i, j] = ttest_rel(i_mean, j_mean)
 
 headers = datasets.keys()
 names_column = np.array([[key] for key in datasets.keys()])
@@ -83,3 +84,14 @@ advantage[t_statistic > 0] = 1
 advantage_table = tabulate(np.concatenate(
     (names_column, advantage), axis=1), headers)
 print("Advantage:\n", advantage_table)
+
+significance = np.zeros((len(datasets), len(datasets)))
+significance[p_value <= alpha] = 1
+significance_table = tabulate(np.concatenate(
+    (names_column, significance), axis=1), headers)
+print(f"Statistical significance (alpha = {alpha}):\n", significance_table)
+
+stat_better = significance * advantage
+stat_better_table = tabulate(np.concatenate(
+    (names_column, stat_better), axis=1), headers)
+print("Statistically significantly better:\n", stat_better_table)
