@@ -49,20 +49,22 @@ scores = np.zeros((len(clfs), len(selectors), folds))
 for selector_idx, selector_name in enumerate(selectors):
     for fold_index, (train, test) in enumerate(skf.split(X, y)):
         data_train, data_test = selectors[selector_name].fit_transform(X[train], y[train]), \
-                                selectors[selector_name].transform(X[test])
+            selectors[selector_name].transform(X[test])
         for clf_index, clf_name in enumerate(clfs):
             clf = clone(clfs[clf_name])
             clf.fit(data_train, y[train])
             y_pred = clf.predict(data_test)
             scores[clf_index, selector_idx, fold_index] = accuracy_score(
                 y[test], y_pred)
-
+            if selector_name == 'PCA':
+                print(sum(selectors[selector_name].explained_variance_ratio_))
 for dataset_id, selector_name in enumerate(selectors):
     print(f"{selector_name}")
     means = np.mean(scores[:, dataset_id, :], axis=1)
     std_devs = np.std(scores[:, dataset_id, :], axis=1)
     for clf_idx, clf_name in enumerate(clfs):
-        print(f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
+        print(
+            f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
 
 alpha = .05
 t_statistic = np.zeros((len(selectors), len(selectors)))
@@ -70,7 +72,8 @@ p_value = np.zeros((len(selectors), len(selectors)))
 
 for i in range(len(selectors)):
     for j in range(len(selectors)):
-        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1)
+        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(
+            scores[:, j, :], axis=1)
         t_statistic[i, j], p_value[i, j] = ttest_rel(i_mean, j_mean)
 
 headers = selectors.keys()
