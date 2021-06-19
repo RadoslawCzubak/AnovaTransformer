@@ -58,10 +58,10 @@ for selector_idx, selector_name in enumerate(selectors):
                 y[test], y_pred)
             if selector_name == 'PCA':
                 print(sum(selectors[selector_name].explained_variance_ratio_))
-for dataset_id, selector_name in enumerate(selectors):
+for selector_id, selector_name in enumerate(selectors):
     print(f"{selector_name}")
-    means = np.mean(scores[:, dataset_id, :], axis=1)
-    std_devs = np.std(scores[:, dataset_id, :], axis=1)
+    means = np.mean(scores[:, selector_id, :], axis=1)
+    std_devs = np.std(scores[:, selector_id, :], axis=1)
     for clf_idx, clf_name in enumerate(clfs):
         print(
             f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')

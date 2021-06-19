@@ -11,5 +11,5 @@ class NoSelector(BaseEstimator, SelectorMixin):
         return X
 
     def fit_transform(self, X, y=None, **fit_params):
-        self.mask = np.ones(X.shape[1], dtype=1)
+        self.mask = np.ones(X.shape[1], dtype=bool)
         return X
