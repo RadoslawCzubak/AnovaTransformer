@@ -15,20 +15,25 @@ from sklearn.tree import DecisionTreeClassifier
 from tabulate import tabulate
 
 np.set_printoptions(suppress=True)
-X, y = make_classification(
-    n_samples=10000,
-    n_classes=3,
-    n_features=20,
-    n_redundant=4,
-    n_informative=10,
-    random_state=1234,
-    n_clusters_per_class=1,
-)
+# X, y = make_classification(
+#     n_samples=10000,
+#     n_classes=3,
+#     n_features=20,
+#     n_redundant=4,
+#     n_informative=10,
+#     random_state=1234,
+#     n_clusters_per_class=1,
+# )
+# X = MinMaxScaler().fit_transform(X, y)
 
-X = MinMaxScaler().fit_transform(X, y)
+dataset = np.genfromtxt("datasets/medium-winequality-red.csv", delimiter=",")
+X = dataset[:, :-1]
+y = dataset[:, -1].astype(int)
 
-k_features = 10
 
+# k_features = 1 #iris
+k_features = 3  # wine
+# k_features = 1 #sonar
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1234)
 
 clfs = {
