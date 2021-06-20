@@ -61,8 +61,6 @@ for selector_idx, selector_name in enumerate(selectors):
             y_pred = clf.predict(data_test)
             scores[clf_index, selector_idx, fold_index] = accuracy_score(
                 y[test], y_pred)
-            if selector_name == 'PCA':
-                print(sum(selectors[selector_name].explained_variance_ratio_))
 
 for selector_id, selector_name in enumerate(selectors):
     print(f"{selector_name}")
