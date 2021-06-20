@@ -26,14 +26,14 @@ np.set_printoptions(suppress=True)
 # )
 # X = MinMaxScaler().fit_transform(X, y)
 
-dataset = np.genfromtxt("datasets/medium-winequality-red.csv", delimiter=",")
+dataset = np.genfromtxt("datasets/small-iris.csv", delimiter=",")
 X = dataset[:, :-1]
 y = dataset[:, -1].astype(int)
 
 
 # k_features = 1 #iris
-k_features = 3  # wine
-# k_features = 1 #sonar
+# k_features = 1  # wine
+# k_features = 7 #sonar
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1234)
 
 clfs = {
@@ -63,6 +63,7 @@ for selector_idx, selector_name in enumerate(selectors):
                 y[test], y_pred)
             if selector_name == 'PCA':
                 print(sum(selectors[selector_name].explained_variance_ratio_))
+
 for selector_id, selector_name in enumerate(selectors):
     print(f"{selector_name}")
     means = np.mean(scores[:, selector_id, :], axis=1)
