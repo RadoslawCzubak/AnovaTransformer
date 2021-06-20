@@ -15,19 +15,14 @@ from tabulate import tabulate
 from NoSelector import NoSelector
 
 np.set_printoptions(suppress=True)
-X, y = make_classification(
-    n_samples=10000,
-    n_classes=3,
-    n_features=20,
-    n_redundant=4,
-    n_informative=10,
-    random_state=1234,
-    n_clusters_per_class=1,
-)
+dataset = np.genfromtxt("datasets/small-iris.csv", delimiter=",")
+X = dataset[:, :-1]
+y = dataset[:, -1].astype(int)
 
-X = MinMaxScaler().fit_transform(X, y)
 
-k_features = 10
+# k_features = 1 #iris
+# k_features = 1  # wine
+# k_features = 7 #sonar
 
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1234)
 
@@ -61,7 +56,8 @@ for dataset_id, dataset_name in enumerate(transformed_datasets):
     means = np.mean(scores[:, dataset_id, :], axis=1)
     std_devs = np.std(scores[:, dataset_id, :], axis=1)
     for clf_idx, clf_name in enumerate(clfs):
-        print(f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
+        print(
+            f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
 
 alpha = .05
 t_statistic = np.zeros((len(transformed_datasets), len(transformed_datasets)))
@@ -69,7 +65,8 @@ p_value = np.zeros((len(transformed_datasets), len(transformed_datasets)))
 
 for i in range(len(transformed_datasets)):
     for j in range(len(transformed_datasets)):
-        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1)
+        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(
+            scores[:, j, :], axis=1)
         t_statistic[i, j], p_value[i, j] = ttest_rel(i_mean, j_mean)
 
 headers = transformed_datasets.keys()
