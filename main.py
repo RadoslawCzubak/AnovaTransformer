@@ -1,18 +1,22 @@
-from scipy.stats import rankdata
+from scipy.stats import ttest_rel
 from sklearn.metrics import accuracy_score
 from sklearn.base import clone
 from sklearn.datasets import make_classification
 import numpy as np
-from sklearn.feature_selection import f_classif, SelectKBest
-from AnovaTransformer import AnovaFTransformer
+from sklearn.feature_selection import chi2, SelectKBest
+from sklearn.preprocessing import MinMaxScaler
+from AnovaSelector import AnovaSelector
 from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from tabulate import tabulate
+from NoSelector import NoSelector
+
 np.set_printoptions(suppress=True)
 X, y = make_classification(
-    n_samples=20,
+    n_samples=10000,
     n_classes=3,
     n_features=20,
     n_redundant=4,
@@ -20,6 +24,10 @@ X, y = make_classification(
     random_state=1234,
     n_clusters_per_class=1,
 )
+
+X = MinMaxScaler().fit_transform(X, y)
+
+k_features = 10
 
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1234)
 
@@ -29,62 +37,62 @@ clfs = {
     "CART": DecisionTreeClassifier(random_state=7777),
 }
 
+transformed_datasets = {
+    'Base': NoSelector().fit_transform(X),
+    'Anova': AnovaSelector(k_features=k_features).fit_transform(X, y),
+    'SKB': SelectKBest(chi2, k=k_features).fit_transform(X, y),
+    'PCA': PCA(n_components=k_features).fit_transform(X)
+}
+
 folds = 5
+scores = np.zeros((len(clfs), len(transformed_datasets), folds))
+for dataset_idx, dataset_name in enumerate(transformed_datasets):
+    data = transformed_datasets[dataset_name]
+    for fold_index, (train, test) in enumerate(skf.split(data, y)):
+        for clf_index, clf_name in enumerate(clfs):
+            clf = clone(clfs[clf_name])
+            clf.fit(data[train], y[train])
+            y_pred = clf.predict(data[test])
+            scores[clf_index, dataset_idx, fold_index] = accuracy_score(
+                y[test], y_pred)
 
-scores = np.empty((len(clfs), folds))
-scores_pca = np.empty((len(clfs), folds))
-scores_anova = np.empty((len(clfs), folds))
+for dataset_id, dataset_name in enumerate(transformed_datasets):
+    print(f"{dataset_name}")
+    means = np.mean(scores[:, dataset_id, :], axis=1)
+    std_devs = np.std(scores[:, dataset_id, :], axis=1)
+    for clf_idx, clf_name in enumerate(clfs):
+        print(f'{clf_name}: {str(means[clf_idx].round(2))}({str(std_devs[clf_idx].round(2))})')
 
-for fold_index, (train, test) in enumerate(skf.split(X, y)):
-    for clf_index, clf_name in enumerate(clfs):
+alpha = .05
+t_statistic = np.zeros((len(transformed_datasets), len(transformed_datasets)))
+p_value = np.zeros((len(transformed_datasets), len(transformed_datasets)))
 
-        X_train, X_test = X[train], X[test]
-        y_train, y_test = y[train], y[test]
+for i in range(len(transformed_datasets)):
+    for j in range(len(transformed_datasets)):
+        i_mean, j_mean = np.mean(scores[:, i, :], axis=1), np.mean(scores[:, j, :], axis=1)
+        t_statistic[i, j], p_value[i, j] = ttest_rel(i_mean, j_mean)
 
-        # base
+headers = transformed_datasets.keys()
+names_column = np.array([[key] for key in transformed_datasets.keys()])
+t_statistic_table = np.concatenate((names_column, t_statistic), axis=1)
+t_statistic_table = tabulate(t_statistic_table, headers, floatfmt=".2f")
+p_value_table = np.concatenate((names_column, p_value), axis=1)
+p_value_table = tabulate(p_value_table, headers, floatfmt=".2f")
+print("t-statistic:\n", t_statistic_table, "\n\np-value:\n", p_value_table)
 
-        clf = clone(clfs[clf_name])
-        clf.fit(X_train, y_train)
-        y_pred = clf.predict(X_test)
-        scores[clf_index][fold_index] = accuracy_score(y_test, y_pred)
+advantage = np.zeros((len(transformed_datasets), len(transformed_datasets)))
+advantage[t_statistic > 0] = 1
+advantage_table = tabulate(np.concatenate(
+    (names_column, advantage), axis=1), headers)
+print("Advantage:\n", advantage_table)
 
-        # pca
+significance = np.zeros((len(transformed_datasets), len(transformed_datasets)))
+significance[p_value <= alpha] = 1
+significance_table = tabulate(np.concatenate(
+    (names_column, significance), axis=1), headers)
+print(f"Statistical significance (alpha = {alpha}):\n", significance_table)
 
-        pca = PCA(n_components=3)
-        X_pca = pca.fit_transform(X)
-        # print(
-        #     f"Explained variance ratio: {sum(pca.explained_variance_ratio_[:3])}")
-
-        X_pca_train, X_pca_test = X_pca[train], X_pca[test]
-
-        clf = clone(clfs[clf_name])
-        clf.fit(X_pca_train, y_train)
-        y_pred = clf.predict(X_pca_test)
-        scores_pca[clf_index][fold_index] = accuracy_score(y_test, y_pred)
-
-        # anova
-
-        X_anova = AnovaFTransformer().fit_transform(X, y, n_features=3)
-        X_anova_train, X_anova_test = X_anova[train], X_anova[test]
-
-        clf = clone(clfs[clf_name])
-        clf.fit(X_anova_train, y_train)
-        y_pred = clf.predict(X_anova_test)
-        scores_anova[clf_index][fold_index] = accuracy_score(y_test, y_pred)
-
-print("BAZOWE: ")
-for clf_index, clf_name in (enumerate(clfs)):
-    print(
-        f"{clf_name}: {np.mean(scores, axis=1)[clf_index]} ({np.std(scores, axis=1)[clf_index]:.3})")
-print("PCA: ")
-
-for clf_index, clf_name in (enumerate(clfs)):
-    print(
-        f"{clf_name}: {np.mean(scores_pca, axis=1)[clf_index]} ({np.std(scores_pca, axis=1)[clf_index]:.3})")
-print("ANOVA: ")
-for clf_index, clf_name in (enumerate(clfs)):
-    print(
-        f"{clf_name}: {np.mean(scores_anova, axis=1)[clf_index]} ({np.std(scores_anova, axis=1)[clf_index]:.3})")
-
-
-ranks = []
+stat_better = significance * advantage
+stat_better_table = tabulate(np.concatenate(
+    (names_column, stat_better), axis=1), headers)
+print("Statistically significantly better:\n", stat_better_table)
